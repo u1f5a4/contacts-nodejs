@@ -42,6 +42,10 @@ export class UsersService {
     if (isUpdate) return Object.assign(findUser, updateUserDto);
   }
 
+  updateImage(email: string, image: string) {
+    return this.update(email, { image });
+  }
+
   async remove(email: string) {
     const findUser = await this.findOne(email);
     return this.usersRepository.remove(findUser);

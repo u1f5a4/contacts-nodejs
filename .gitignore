@@ -37,3 +37,4 @@ lerna-debug.log*
 # Current project
 pgadmin
 pgdata
+images/*

@@ -6,10 +6,14 @@ import {
   Patch,
   Param,
   Delete,
+  UploadedFile,
+  ParseFilePipeBuilder,
 } from '@nestjs/common';
+
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ApiImage } from './user-image.decorator';
 
 @Controller('users')
 export class UsersController {
@@ -18,6 +22,20 @@ export class UsersController {
   @Post()
   async create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
+  }
+
+  @Post('image')
+  @ApiImage()
+  updateImage(
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({ fileType: 'image' })
+        .build(),
+    )
+    image: Express.Multer.File,
+    @Body() body: { email: string },
+  ) {
+    return this.usersService.updateImage(body.email, image.path);
   }
 
   @Get()
