@@ -8,6 +8,8 @@ import {
   Delete,
   UploadedFile,
   ParseFilePipeBuilder,
+  StreamableFile,
+  Header,
 } from '@nestjs/common';
 
 import { UsersService } from './users.service';
@@ -22,6 +24,18 @@ export class UsersController {
   @Post()
   async create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
+  }
+
+  @Post('pdf')
+  async generatePdf(@Body() body: { email: string }) {
+    return this.usersService.generatePdf(body.email);
+  }
+
+  @Get('pdf')
+  @Header('Content-Type', 'application/pdf')
+  async getPdf(@Body() body: { email: string }) {
+    const pdf = await this.usersService.getPdf(body.email);
+    return new StreamableFile(pdf);
   }
 
   @Post('image')
