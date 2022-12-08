@@ -4,41 +4,47 @@ import {
   Post,
   Body,
   Patch,
-  Param,
   Delete,
   UploadedFile,
   ParseFilePipeBuilder,
   StreamableFile,
   Header,
+  UseGuards,
 } from '@nestjs/common';
 
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiImage } from './user-image.decorator';
+import { AuthGuard } from 'src/auth/auth.guard';
+import { Payload, PayloadType } from 'src/auth/payload.decorator';
 
-@Controller('users')
+@Controller('user')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Post()
-  async create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  @Get()
+  @UseGuards(AuthGuard)
+  async getUser(@Payload() payload: PayloadType) {
+    return this.usersService.getUser(payload.email);
   }
 
   @Post('pdf')
+  @UseGuards(AuthGuard)
   async generatePdf(@Body() body: { email: string }) {
     return this.usersService.generatePdf(body.email);
   }
 
   @Get('pdf')
+  @UseGuards(AuthGuard)
   @Header('Content-Type', 'application/pdf')
   async getPdf(@Body() body: { email: string }) {
     const pdf = await this.usersService.getPdf(body.email);
+    if (!pdf) throw new Error('[getPdf] pdf not found');
     return new StreamableFile(pdf);
   }
 
   @Post('image')
+  @UseGuards(AuthGuard)
   @ApiImage()
   updateImage(
     @UploadedFile(
@@ -47,28 +53,23 @@ export class UsersController {
         .build(),
     )
     image: Express.Multer.File,
-    @Body() body: { email: string },
+    @Payload() payload: PayloadType,
   ) {
-    return this.usersService.updateImage(body.email, image.path);
+    return this.usersService.updateImage(payload.email, image.path);
   }
 
-  @Get()
-  findAll() {
-    return this.usersService.findAll();
+  @Patch()
+  @UseGuards(AuthGuard)
+  update(
+    @Payload() payload: PayloadType,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    return this.usersService.update(payload.email, updateUserDto);
   }
 
-  @Get(':email')
-  async findOne(@Param('email') email: string) {
-    return this.usersService.findOne(email);
-  }
-
-  @Patch(':email')
-  update(@Param('email') email: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(email, updateUserDto);
-  }
-
-  @Delete(':email')
-  remove(@Param('email') email: string) {
-    return this.usersService.remove(email);
+  @Delete()
+  @UseGuards(AuthGuard)
+  remove(@Payload() payload: PayloadType) {
+    return this.usersService.remove(payload.email);
   }
 }

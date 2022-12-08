@@ -14,14 +14,18 @@ export class UsersService {
     private usersRepository: Repository<User>,
   ) {}
 
-  create(createUserDto: CreateUserDto) {
-    const user = new User();
-    const { email, firstName, lastName } = createUserDto;
-    user.email = email;
-    user.firstName = firstName;
-    user.lastName = lastName;
+  async create(createUserDto: CreateUserDto) {
+    const findUser = await this.usersRepository.findOne({
+      where: { email: createUserDto.email },
+    });
+    if (findUser)
+      throw new Error('[create] A user with this email already exists');
 
-    return this.usersRepository.save(user);
+    return this.usersRepository.save({ ...createUserDto });
+  }
+
+  async getUser(email: string) {
+    return this.return(await this.findOne(email));
   }
 
   async generatePdf(email: string) {
@@ -53,40 +57,50 @@ export class UsersService {
       const uint8array = new Uint8Array(pdfBuffer);
       this.update(email, { pdf: uint8array });
       return { pdf: true };
-    } catch {
+    } catch (e) {
       return { pdf: false };
     }
   }
 
   async getPdf(email: string) {
-    return (await this.findOne(email)).pdf;
+    const findUser = await this.usersRepository.findOne({
+      where: { email: email },
+    });
+    return findUser.pdf;
   }
 
-  findAll() {
-    return this.usersRepository.find();
-  }
-
+  // for internal use only
   async findOne(email: string) {
     const findUser = await this.usersRepository.findOne({
       where: { email: email },
     });
-    if (!findUser) throw new Error('not found user');
     return findUser;
   }
 
-  async update(email: string, updateUserDto: UpdateUserDto) {
-    const findUser = await this.findOne(email);
-    const isUpdate =
-      (await this.usersRepository.update(email, updateUserDto)).affected === 1;
-    if (isUpdate) return Object.assign(findUser, updateUserDto);
+  async return(user: UpdateUserDto) {
+    delete user.password;
+    return { ...user, pdf: Boolean(user.pdf) };
   }
 
-  updateImage(email: string, image: string) {
-    return this.update(email, { image });
+  async update(email: string, updateUserDto: Partial<UpdateUserDto>) {
+    const findUser = await this.findOne(email);
+    const isUpdate =
+      (
+        await this.usersRepository.update(email, {
+          ...findUser,
+          ...updateUserDto,
+        } as UpdateUserDto)
+      ).affected === 1;
+    if (isUpdate) return this.return(Object.assign(findUser, updateUserDto));
+    else throw new Error('[update] error update user');
+  }
+
+  async updateImage(email: string, image: string) {
+    return await this.update(email, { image });
   }
 
   async remove(email: string) {
-    const findUser = await this.findOne(email);
-    return this.usersRepository.remove(findUser);
+    const { affected } = await this.usersRepository.delete({ email });
+    return { delete: affected === 1 };
   }
 }
