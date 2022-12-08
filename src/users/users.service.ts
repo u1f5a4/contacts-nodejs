@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as PDFDocument from 'pdfkit';
+import * as fs from 'node:fs/promises';
 
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -96,10 +97,18 @@ export class UsersService {
   }
 
   async updateImage(email: string, image: string) {
+    const user = await this.findOne(email);
+    const oldImage = user.image;
+    if (oldImage && oldImage !== image) await fs.rm(oldImage);
+
     return await this.update(email, { image });
   }
 
   async remove(email: string) {
+    const user = await this.findOne(email);
+    const oldImage = user.image;
+    if (oldImage) await fs.rm(oldImage);
+
     const { affected } = await this.usersRepository.delete({ email });
     return { delete: affected === 1 };
   }
